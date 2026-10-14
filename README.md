@@ -1,4 +1,4 @@
-# ⚡ Streakly — Interactive Habit Tracking & Productivity Companion
+# 💕 Streakly — Shared Couple's Habit Tracker & Productivity Companion
 
 <div align="center">
   <img src="./public/cover.png" alt="Streakly Banner" width="100%" style="border-radius: 16px; max-height: 480px; object-fit: contain; background: #ffffff;" />
@@ -14,10 +14,11 @@
   [![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=for-the-badge&logo=vercel)](https://vercel.com/)
 
   <p align="center">
-    <strong>An Apple-inspired, mobile-first habit tracking dashboard featuring Bloop—a living virtual companion that evolves with your daily consistency.</strong>
+    <strong>An Apple-inspired, mobile-first shared habit tracking dashboard for couples featuring Bloop—a living virtual pet companion that grows as you and your partner build daily consistency together.</strong>
   </p>
 
   <p align="center">
+    <a href="#-built-for-couples--accountability-partners">Couples Features</a> •
     <a href="#-key-features">Key Features</a> •
     <a href="#-mobile-first-ergonomics">Mobile Ergonomics</a> •
     <a href="#-virtual-companion-bloop">Virtual Pet</a> •
@@ -25,6 +26,18 @@
     <a href="#-local-setup">Local Setup</a>
   </p>
 </div>
+
+---
+
+## 👩‍❤️‍👨 Built for Couples & Accountability Partners
+
+**Streakly** was uniquely created to help couples stay connected, motivate one another, and build healthy daily rituals together:
+
+- 🌸 **Independent Spaces with Cloud Sync**: Separate spaces tailored for each partner (e.g. Electric Cobalt ⚡ for Visal, Cherry Blossom 🌸 for Pooja) with independent habits, daily to-dos, and custom themes.
+- 👀 **Partner Check-Ins**: View your partner's real-time streak count and daily habit progress directly from your phone to cheer them on.
+- 🐾 **Shared Pet Companion**: Care for Bloop together—completing habits and to-dos earns Companion Resonance XP, unlocks treats, and levels up your pet.
+- 🎯 **Milestone & Date Countdowns**: Track upcoming couple dates, exams, anniversaries, and travel milestones with high-contrast live countdown timers.
+- 🔒 **PIN-Protected Privacy**: Master space secured with an Apple-style 4-digit PIN pad.
 
 ---
 
