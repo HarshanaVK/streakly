@@ -1,0 +1,1994 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NovaOS — Interactive Habit, Streak & Goal Companion</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono for tabular countdowns -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <!-- Phosphor Icons for crisp Apple-like iconography -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          animation: {
+            'float-slow': 'floatSlow 5s ease-in-out infinite',
+            'pulse-glow': 'pulseGlow 3s ease-in-out infinite',
+            'spin-slow': 'spin 12s linear infinite',
+          },
+          keyframes: {
+            floatSlow: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-7px)' },
+            },
+            pulseGlow: {
+              '0%, 100%': { opacity: '0.5', transform: 'scale(1)' },
+              '50%': { opacity: '0.85', transform: 'scale(1.06)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --glass-bg: rgba(22, 24, 34, 0.58);
+      --glass-border: rgba(255, 255, 255, 0.16);
+      --glass-highlight: rgba(255, 255, 255, 0.28);
+      --apple-spring: cubic-bezier(0.22, 1, 0.36, 1);
+      --apple-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #07080d;
+      color: #f8fafc;
+      overflow-x: hidden;
+      min-height: 100vh;
+      selection-background-color: rgba(56, 189, 248, 0.3);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 9999px;
+    }
+
+    /* Apple visionOS / iOS 18 Frosted Glass Cards */
+    .vision-glass {
+      background: linear-gradient(145deg, rgba(30, 34, 50, 0.66) 0%, rgba(15, 17, 26, 0.52) 100%);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 
+        0 20px 50px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0.5px rgba(255, 255, 255, 0.25);
+      transition: transform 0.45s var(--apple-spring), border-color 0.35s ease, box-shadow 0.45s var(--apple-spring);
+    }
+
+    .vision-glass:hover {
+      border-color: rgba(255, 255, 255, 0.24);
+    }
+
+    .vision-pill {
+      background: rgba(255, 255, 255, 0.09);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      transition: all 0.3s var(--apple-spring);
+    }
+
+    .vision-pill:active, .btn-spring:active {
+      transform: scale(0.94);
+    }
+
+    /* Dynamic Background Slideshow Layers */
+    .bg-slide {
+      position: fixed;
+      inset: -24px; /* Extra bleed for parallax movement */
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transform: scale(1.06);
+      transition: opacity 1.6s cubic-bezier(0.4, 0, 0.2, 1), transform 8s ease-out;
+      pointer-events: none;
+      z-index: -2;
+    }
+
+    .bg-slide.active {
+      opacity: 1;
+      transform: scale(1.0);
+    }
+
+    /* Ambient Mesh Overlay for Apple Contrast & Depth */
+    .bg-ambient-overlay {
+      position: fixed;
+      inset: 0;
+      background: 
+        radial-gradient(circle at 50% 0%, rgba(15, 23, 42, 0.25) 0%, rgba(6, 8, 15, 0.78) 75%, rgba(5, 6, 11, 0.92) 100%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* Scroll / Entrance Viewing Animations */
+    .reveal-card {
+      opacity: 0;
+      transform: translateY(26px) scale(0.98);
+      transition: opacity 0.7s var(--apple-spring), transform 0.7s var(--apple-spring);
+    }
+    .reveal-card.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* Virtual Pet Jelly & Expression Animations */
+    @keyframes petSquish {
+      0% { transform: scale(1, 1); }
+      30% { transform: scale(1.18, 0.84); }
+      55% { transform: scale(0.92, 1.1); }
+      75% { transform: scale(1.05, 0.96); }
+      100% { transform: scale(1, 1); }
+    }
+    @keyframes petJump {
+      0% { transform: translateY(0) scale(1); }
+      25% { transform: translateY(-22px) scale(1.08, 0.94) rotate(-5deg); }
+      50% { transform: translateY(-28px) scale(1.12) rotate(5deg); }
+      80% { transform: translateY(4px) scale(0.95, 1.05); }
+      100% { transform: translateY(0) scale(1); }
+    }
+    @keyframes petHeadTilt {
+      0% { transform: rotate(0deg); }
+      35% { transform: rotate(-16deg) scale(1.04); }
+      75% { transform: rotate(-12deg) scale(1.04); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .pet-squish {
+      animation: petSquish 0.65s var(--apple-bounce);
+    }
+    .pet-jump {
+      animation: petJump 0.75s var(--apple-bounce);
+    }
+    .pet-tilt {
+      animation: petHeadTilt 0.9s var(--apple-spring);
+    }
+
+    /* SVG Ring Transitions */
+    .progress-ring-circle {
+      transition: stroke-dashoffset 0.85s var(--apple-spring);
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+
+    /* Tabular numbers for countdowns */
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Subtle Shine Effect on Cards */
+    .card-shine {
+      position: relative;
+      overflow: hidden;
+    }
+    .card-shine::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(
+        to right,
+        transparent 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        transparent 100%
+      );
+      transform: skewX(-25deg);
+      transition: left 0.75s ease;
+      pointer-events: none;
+    }
+    .card-shine:hover::before {
+      left: 150%;
+    }
+
+    /* Touch Cursor Follower Glow */
+    #touchGlow {
+      position: fixed;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.45) 0%, rgba(168, 85, 247, 0.2) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%) scale(0.5);
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.2s ease-out;
+    }
+    #touchGlow.active {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.25);
+    }
+  </style>
+</head>
+
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200 pb-28 md:pb-14">
+
+  <!-- ==========================================
+       DYNAMIC BACKGROUND SLIDESHOW & PARALLAX
+  =========================================== -->
+  <div id="bgSlideshowContainer" aria-hidden="true">
+    <!-- Slide 0: Alpine Twilight -->
+    <div class="bg-slide active" data-index="0"
+      style="background-image: linear-gradient(180deg, rgba(10,14,28,0.3), rgba(8,10,20,0.65)), url('https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1920&q=80'); background-color: #0f172a;"></div>
+    <!-- Slide 1: Aurora Borealis -->
+    <div class="bg-slide" data-index="1"
+      style="background-image: linear-gradient(180deg, rgba(6,24,28,0.28), rgba(6,12,20,0.7)), url('https://images.unsplash.com/photo-1531366936337-7c912a4589a7?auto=format&fit=crop&w=1920&q=80'); background-color: #064e3b;"></div>
+    <!-- Slide 2: Golden Hour Dunes -->
+    <div class="bg-slide" data-index="2"
+      style="background-image: linear-gradient(180deg, rgba(35,18,11,0.3), rgba(15,10,14,0.72)), url('https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1920&q=80'); background-color: #451a03;"></div>
+    <!-- Slide 3: Minimalist Sanctuary -->
+    <div class="bg-slide" data-index="3"
+      style="background-image: linear-gradient(180deg, rgba(20,24,33,0.35), rgba(10,12,18,0.75)), url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1920&q=80'); background-color: #1e293b;"></div>
+    <!-- Slide 4: Cyber Neon Rain -->
+    <div class="bg-slide" data-index="4"
+      style="background-image: linear-gradient(180deg, rgba(22,12,38,0.32), rgba(8,8,18,0.75)), url('https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=1920&q=80'); background-color: #1e1b4b;"></div>
+  </div>
+  <div class="bg-ambient-overlay" aria-hidden="true"></div>
+
+  <!-- Particle Canvas for Pet Hearts, Confetti & Sparkles -->
+  <canvas id="fxCanvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+  <!-- Touch / Pointer Visual Glow -->
+  <div id="touchGlow"></div>
+
+  <!-- ==========================================
+       TOP NAVIGATION & MOOD SLIDESHOW BAR
+  =========================================== -->
+  <header class="sticky top-0 z-40 px-3 sm:px-6 pt-3 pb-2">
+    <div class="max-w-5xl mx-auto vision-glass rounded-full px-3.5 py-2 flex items-center justify-between gap-2">
+      <!-- Brand + Live Clock -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/25">
+          <i class="ph-fill ph-sparkle text-white text-base"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-sm tracking-tight text-white">NovaOS</span>
+            <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/10 text-cyan-300 border border-white/10">iOS 18</span>
+          </div>
+          <p id="headerLiveDate" class="text-[11px] text-slate-300/80 hidden sm:block">Loading date...</p>
+        </div>
+      </div>
+
+      <!-- Ambient Wallpaper Mood Switcher Pill -->
+      <div class="flex items-center gap-1 bg-black/30 border border-white/10 rounded-full p-1 overflow-x-auto max-w-[210px] sm:max-w-none no-scrollbar">
+        <button onclick="setWallpaperMood(0)" id="moodBtn-0" class="mood-btn px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 bg-white/20 text-white shadow-sm whitespace-nowrap" title="Alpine Twilight">
+          <span>🏔️</span><span class="hidden md:inline">Alpine</span>
+        </button>
+        <button onclick="setWallpaperMood(1)" id="moodBtn-1" class="mood-btn px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 text-slate-300 hover:text-white whitespace-nowrap" title="Aurora Borealis">
+          <span>🌌</span><span class="hidden md:inline">Aurora</span>
+        </button>
+        <button onclick="setWallpaperMood(2)" id="moodBtn-2" class="mood-btn px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 text-slate-300 hover:text-white whitespace-nowrap" title="Golden Dunes">
+          <span>🏜️</span><span class="hidden md:inline">Dunes</span>
+        </button>
+        <button onclick="setWallpaperMood(3)" id="moodBtn-3" class="mood-btn px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 text-slate-300 hover:text-white whitespace-nowrap" title="Minimalist Sanctuary">
+          <span>🏛️</span><span class="hidden md:inline">Zen</span>
+        </button>
+        <button onclick="setWallpaperMood(4)" id="moodBtn-4" class="mood-btn px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 text-slate-300 hover:text-white whitespace-nowrap" title="Cyber Rain">
+          <span>🌧️</span><span class="hidden md:inline">Cyber</span>
+        </button>
+        <button onclick="toggleAutoSlideshow()" id="autoSlideBtn" class="px-2 py-1 rounded-full text-[11px] font-semibold text-emerald-300 bg-emerald-500/15 border border-emerald-400/20 ml-0.5 flex items-center gap-1" title="Toggle Auto-Slideshow">
+          <i class="ph-fill ph-play-circle text-xs"></i><span class="hidden lg:inline">Auto</span>
+        </button>
+      </div>
+
+      <!-- Sound & Reset Controls -->
+      <div class="flex items-center gap-1.5">
+        <button onclick="toggleSound()" id="soundToggleBtn" class="vision-pill w-8 h-8 rounded-full flex items-center justify-center text-slate-200 hover:text-white" title="Toggle Tactile Audio">
+          <i id="soundIcon" class="ph-fill ph-speaker-high text-sm"></i>
+        </button>
+        <button onclick="openResetModal()" class="vision-pill w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-300" title="Reset Demo Data">
+          <i class="ph ph-arrow-counter-clockwise text-sm"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================
+       MAIN CONTENT CONTAINER
+  =========================================== -->
+  <main class="max-w-5xl mx-auto px-3.5 sm:px-6 pt-2 space-y-5">
+
+    <!-- ==========================================
+         1. INTERACTIVE VIRTUAL PET STAGE ("NOVA")
+    =========================================== -->
+    <section id="section-pet" class="reveal-card visible vision-glass rounded-[32px] p-4 sm:p-6 relative overflow-hidden card-shine">
+      <!-- Ambient Reactive Aura Behind Pet -->
+      <div id="petAuraGlow" class="absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full bg-gradient-to-tr from-cyan-500/30 via-indigo-500/25 to-fuchsia-500/30 blur-3xl pointer-events-none transition-all duration-700"></div>
+
+      <div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+        
+        <!-- Left / Center: Interactive Spirit Pet & Eye-Tracking Stage -->
+        <div class="lg:col-span-5 flex flex-col items-center justify-center">
+          
+          <!-- Live Speech Bubble -->
+          <div id="petSpeechBubble" class="vision-pill rounded-2xl px-4 py-2 mb-3 text-center max-w-xs border border-white/20 shadow-lg transition-all duration-300 transform">
+            <p id="petSpeechText" class="text-xs sm:text-sm font-medium text-white leading-snug">
+              "Hey there! Touch anywhere on the screen—I watch every move & celebrate your wins! ✨"
+            </p>
+          </div>
+
+          <!-- Interactive Pet Hitbox -->
+          <div id="petStageContainer"
+               onclick="triggerPetInteraction('pet')"
+               class="relative w-44 h-44 sm:w-48 sm:h-48 flex items-center justify-center cursor-pointer select-none group"
+               title="Tap or pet Nova!">
+            
+            <!-- Concentric Orbit Rings -->
+            <div class="absolute inset-2 rounded-full border border-white/10 animate-spin-slow pointer-events-none">
+              <div class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_12px_#22d3ee] absolute -top-1 left-1/2"></div>
+            </div>
+            <div class="absolute inset-6 rounded-full border border-dashed border-white/10 pointer-events-none"></div>
+
+            <!-- NOVA SVG SPIRIT COMPANION -->
+            <div id="petBodyWrapper" class="animate-float-slow transition-transform duration-150 will-change-transform">
+              <svg id="novaSvg" viewBox="0 0 220 220" class="w-40 h-40 sm:w-44 sm:h-44 drop-shadow-[0_18px_28px_rgba(56,189,248,0.32)]">
+                <defs>
+                  <!-- Spirit Body Gradient -->
+                  <radialGradient id="novaBodyGrad" cx="38%" cy="30%" r="70%">
+                    <stop id="gradStop1" offset="0%" stop-color="#a5f3fc" />
+                    <stop id="gradStop2" offset="45%" stop-color="#38bdf8" />
+                    <stop id="gradStop3" offset="100%" stop-color="#4f46e5" />
+                  </radialGradient>
+                  <!-- Inner Glass Highlight -->
+                  <linearGradient id="novaGlassShine" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.65" />
+                    <stop offset="40%" stop-color="#ffffff" stop-opacity="0.08" />
+                    <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+                  </linearGradient>
+                  <!-- Cheek Blush Gradient -->
+                  <radialGradient id="cheekBlush" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#fb7185" stop-opacity="0.85" />
+                    <stop offset="100%" stop-color="#fb7185" stop-opacity="0" />
+                  </radialGradient>
+                </defs>
+
+                <!-- Floating Halo / Energy Antenna -->
+                <g id="petAntenna" class="transition-transform duration-200" style="transform-origin: 110px 45px;">
+                  <path d="M110 48 Q110 25 124 18" stroke="url(#novaBodyGrad)" stroke-width="5" stroke-linecap="round" fill="none" />
+                  <circle id="antennaOrb" cx="126" cy="17" r="7" fill="#fde047" class="animate-pulse" />
+                </g>
+
+                <!-- Cute Floating Ears / Wings -->
+                <g id="petEars">
+                  <ellipse cx="42" cy="96" rx="16" ry="26" transform="rotate(-24 42 96)" fill="url(#novaBodyGrad)" />
+                  <ellipse cx="178" cy="96" rx="16" ry="26" transform="rotate(24 178 96)" fill="url(#novaBodyGrad)" />
+                </g>
+
+                <!-- Main Squishy Spirit Body -->
+                <path id="petMainShape"
+                  d="M110 42 C158 42, 184 74, 184 118 C184 162, 156 184, 110 184 C64 184, 36 162, 36 118 C36 74, 62 42, 110 42 Z"
+                  fill="url(#novaBodyGrad)"
+                  stroke="rgba(255,255,255,0.45)"
+                  stroke-width="2.5" />
+
+                <!-- Specular Top Glass Reflection -->
+                <ellipse cx="110" cy="72" rx="52" ry="26" fill="url(#novaGlassShine)" />
+
+                <!-- Face Group (Moves with 3D Eye/Touch Tracking!) -->
+                <g id="petFaceGroup">
+                  <!-- Blushing Cheeks -->
+                  <ellipse id="leftBlush" cx="68" cy="126" rx="13" ry="8" fill="url(#cheekBlush)" opacity="0.65" />
+                  <ellipse id="rightBlush" cx="152" cy="126" rx="13" ry="8" fill="url(#cheekBlush)" opacity="0.65" />
+
+                  <!-- NORMAL / TRACKING EYES -->
+                  <g id="eyesNormal">
+                    <!-- Left Eye Socket -->
+                    <ellipse cx="82" cy="108" rx="13.5" ry="15.5" fill="#090d16" />
+                    <!-- Right Eye Socket -->
+                    <ellipse cx="138" cy="108" rx="13.5" ry="15.5" fill="#090d16" />
+
+                    <!-- Moving Pupils Group -->
+                    <g id="pupilsGroup">
+                      <!-- Left Iris & Specular Shine -->
+                      <circle cx="82" cy="108" r="7.5" fill="#38bdf8" opacity="0.35" />
+                      <circle cx="85" cy="103" r="5" fill="#ffffff" />
+                      <circle cx="78" cy="113" r="2.2" fill="#ffffff" opacity="0.8" />
+                      <!-- Right Iris & Specular Shine -->
+                      <circle cx="138" cy="108" r="7.5" fill="#38bdf8" opacity="0.35" />
+                      <circle cx="141" cy="103" r="5" fill="#ffffff" />
+                      <circle cx="134" cy="113" r="2.2" fill="#ffffff" opacity="0.8" />
+                    </g>
+                  </g>
+
+                  <!-- HAPPY / PETTING ARC EYES (^ ◡ ^) -->
+                  <g id="eyesHappy" class="hidden">
+                    <path d="M68 110 Q82 94 96 110" stroke="#090d16" stroke-width="5.5" stroke-linecap="round" fill="none" />
+                    <path d="M124 110 Q138 94 152 110" stroke="#090d16" stroke-width="5.5" stroke-linecap="round" fill="none" />
+                  </g>
+
+                  <!-- STARRY ECSTATIC EYES (★ ‿ ★) -->
+                  <g id="eyesStarry" class="hidden">
+                    <circle cx="82" cy="108" r="14" fill="#090d16" />
+                    <circle cx="138" cy="108" r="14" fill="#090d16" />
+                    <path d="M82 96 L85 104 L94 104 L87 109 L89 118 L82 113 L75 118 L77 109 L70 104 L79 104 Z" fill="#fde047" />
+                    <path d="M138 96 L141 104 L150 104 L143 109 L145 118 L138 113 L131 118 L133 109 L126 104 L135 104 Z" fill="#fde047" />
+                  </g>
+
+                  <!-- SURPRISED / UNDO EYES (⊙ _ ⊙) -->
+                  <g id="eyesCurious" class="hidden">
+                    <circle cx="82" cy="108" r="14" fill="#090d16" />
+                    <circle cx="82" cy="108" r="8" fill="#ffffff" />
+                    <circle cx="82" cy="108" r="4" fill="#090d16" />
+                    <circle cx="138" cy="108" r="14" fill="#090d16" />
+                    <circle cx="138" cy="108" r="8" fill="#ffffff" />
+                    <circle cx="138" cy="108" r="4" fill="#090d16" />
+                  </g>
+
+                  <!-- FOCUSED CYBER VISOR / BROWS (•̀ ᴗ •́) -->
+                  <g id="focusVisor" class="hidden">
+                    <path d="M56 96 Q110 108 164 96 L158 118 Q110 126 62 118 Z" fill="rgba(6, 182, 212, 0.72)" stroke="#a5f3fc" stroke-width="2" />
+                    <path d="M68 94 L96 101" stroke="#090d16" stroke-width="4.5" stroke-linecap="round" />
+                    <path d="M152 94 L124 101" stroke="#090d16" stroke-width="4.5" stroke-linecap="round" />
+                  </g>
+
+                  <!-- EXPRESSIVE MOUTHS -->
+                  <!-- Default Gentle Smile -->
+                  <path id="mouthSmile" d="M100 125 Q110 134 120 125" stroke="#090d16" stroke-width="4.5" stroke-linecap="round" fill="none" />
+                  <!-- Ecstatic Open Joy Mouth -->
+                  <path id="mouthJoy" class="hidden" d="M97 122 Q110 142 123 122 Z" fill="#f43f5e" stroke="#090d16" stroke-width="3.5" />
+                  <!-- Curious O Mouth -->
+                  <circle id="mouthCurious" class="hidden" cx="110" cy="128" r="5.5" fill="#090d16" />
+                </g>
+              </svg>
+            </div>
+
+            <!-- Live Gaze Tracking Indicator Badge -->
+            <div class="absolute bottom-1 px-2.5 py-0.5 rounded-full bg-black/50 border border-white/15 text-[10px] text-cyan-300 flex items-center gap-1 backdrop-blur-md">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span id="petMoodBadge">Tracking Touch & Gaze</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Companion Status, XP Progress & Interactive Command Deck -->
+        <div class="lg:col-span-7 flex flex-col justify-between space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">Nova Companion</h1>
+                <span id="petLevelBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-500/30 to-indigo-500/30 border border-cyan-400/30 text-cyan-200">
+                  Lv. 4 Spirit
+                </span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-300 mt-0.5">
+                Reacts in real time to your touch, habits, countdowns & daily tasks.
+              </p>
+            </div>
+
+            <!-- Today's Total Momentum Score Pill -->
+            <div class="vision-pill rounded-2xl px-3.5 py-2 flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-slate-950 font-extrabold text-sm shadow-md shadow-orange-500/20">
+                <i class="ph-fill ph-fire text-lg"></i>
+              </div>
+              <div>
+                <div class="text-[10px] uppercase tracking-wider text-slate-300 font-semibold">Daily Sync</div>
+                <div id="topMomentumScore" class="text-sm font-bold text-white tabular-nums">0% Complete</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Companion Energy / XP Bar -->
+          <div class="bg-black/30 border border-white/10 rounded-2xl p-3">
+            <div class="flex justify-between items-center text-xs mb-1.5">
+              <span class="font-medium text-slate-200 flex items-center gap-1.5">
+                <i class="ph-fill ph-lightning text-amber-400"></i> Companion Resonance XP
+              </span>
+              <span id="petXpText" class="font-mono text-cyan-300 font-semibold">60 / 100 XP</span>
+            </div>
+            <div class="w-full h-2.5 bg-white/10 rounded-full overflow-hidden p-0.5">
+              <div id="petXpBar" class="h-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-fuchsia-500 transition-all duration-500" style="width: 60%"></div>
+            </div>
+          </div>
+
+          <!-- Interactive Pet Action Buttons -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button onclick="triggerPetInteraction('pet')" class="vision-pill btn-spring rounded-2xl py-2.5 px-3 flex items-center justify-center gap-2 text-xs font-semibold text-white hover:bg-white/15">
+              <span class="text-base">👋</span> Pet Nova
+            </button>
+            <button onclick="triggerPetInteraction('feed')" class="vision-pill btn-spring rounded-2xl py-2.5 px-3 flex items-center justify-center gap-2 text-xs font-semibold text-white hover:bg-white/15">
+              <span class="text-base">🍓</span> Feed Energy
+            </button>
+            <button onclick="triggerPetInteraction('focus')" class="vision-pill btn-spring rounded-2xl py-2.5 px-3 flex items-center justify-center gap-2 text-xs font-semibold text-cyan-200 hover:bg-cyan-500/20">
+              <span class="text-base">🕶️</span> Focus Mode
+            </button>
+            <button onclick="triggerPetInteraction('vibecheck')" class="vision-pill btn-spring rounded-2xl py-2.5 px-3 flex items-center justify-center gap-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/20">
+              <span class="text-base">✨</span> Vibe Check
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         2. DAILY HABITS & WEEKLY STREAK ANALYTICS
+    =========================================== -->
+    <div id="section-habits" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      
+      <!-- LEFT COLUMN (7 cols): Daily Habit Logging Cards -->
+      <section class="lg:col-span-7 reveal-card visible vision-glass rounded-[32px] p-4 sm:p-6 flex flex-col justify-between card-shine">
+        <div>
+          <!-- Section Header -->
+          <div class="flex items-center justify-between gap-2 mb-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
+                <i class="ph-fill ph-check-circle text-xl"></i>
+              </div>
+              <div>
+                <h2 class="text-base sm:text-lg font-bold text-white tracking-tight">Daily Habit Rituals</h2>
+                <p id="habitsProgressSubtitle" class="text-xs text-slate-300">Tap a ritual to log today's streak</p>
+              </div>
+            </div>
+
+            <button onclick="toggleHabitModal(true)" class="vision-pill btn-spring px-3 py-1.5 rounded-full text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 flex items-center gap-1 border border-emerald-400/25">
+              <i class="ph-bold ph-plus"></i> New Habit
+            </button>
+          </div>
+
+          <!-- Add Habit Inline Drawer (Hidden by default) -->
+          <div id="addHabitDrawer" class="hidden mb-4 bg-black/40 border border-white/15 rounded-2xl p-3.5 space-y-3 transition-all">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Create Custom Habit</span>
+              <button onclick="toggleHabitModal(false)" class="text-slate-400 hover:text-white"><i class="ph ph-x text-sm"></i></button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input id="newHabitName" type="text" placeholder="e.g., 30m Mobility & Stretch" class="sm:col-span-2 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-emerald-400" />
+              <select id="newHabitCategory" class="bg-slate-900/90 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400">
+                <option value="⚡ Fitness">⚡ Fitness</option>
+                <option value="💻 Tech Lab">💻 Tech Lab</option>
+                <option value="💧 Wellness">💧 Wellness</option>
+                <option value="📚 Deep Work">📚 Deep Work</option>
+                <option value="🧘 Mindfulness">🧘 Mindfulness</option>
+              </select>
+            </div>
+            <div class="flex items-center justify-between gap-2 pt-1">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] text-slate-300 mr-1">Icon:</span>
+                <button type="button" onclick="selectHabitIcon('🏋️')" class="habit-icon-opt w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center text-sm ring-2 ring-emerald-400">🏋️</button>
+                <button type="button" onclick="selectHabitIcon('☁️')" class="habit-icon-opt w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm">☁️</button>
+                <button type="button" onclick="selectHabitIcon('💧')" class="habit-icon-opt w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm">💧</button>
+                <button type="button" onclick="selectHabitIcon('🚀')" class="habit-icon-opt w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm">🚀</button>
+                <button type="button" onclick="selectHabitIcon('🧠')" class="habit-icon-opt w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm">🧠</button>
+              </div>
+              <button onclick="addNewHabit()" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-bold text-xs shadow-md hover:brightness-110">
+                Save Habit
+              </button>
+            </div>
+          </div>
+
+          <!-- Habits List Container -->
+          <div id="habitsListContainer" class="space-y-2.5 max-h-[370px] overflow-y-auto pr-1">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+
+        <!-- Bottom Quick Tip -->
+        <div class="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-300">
+          <span class="flex items-center gap-1.5"><i class="ph-fill ph-flame text-orange-400 text-sm"></i> Completing habits powers up Nova & updates today's bar</span>
+          <span id="activeStreaksTotal" class="font-bold text-amber-300">0 Total Streak Days</span>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN (5 cols): Apple Fitness Rings & Weekly Streak Chart -->
+      <section class="lg:col-span-5 reveal-card visible vision-glass rounded-[32px] p-4 sm:p-6 flex flex-col justify-between card-shine">
+        <div>
+          <!-- Header -->
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base sm:text-lg font-bold text-white tracking-tight">Weekly Streak & Rings</h2>
+              <p class="text-xs text-slate-300">Tap any day bar to inspect performance</p>
+            </div>
+            <div class="vision-pill px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-bold text-orange-300 border border-orange-400/20">
+              <i class="ph-fill ph-fire text-orange-400"></i>
+              <span id="currentStreakBanner">14 Day Streak</span>
+            </div>
+          </div>
+
+          <!-- Apple Activity Rings + Live Telemetry -->
+          <div class="bg-black/30 border border-white/10 rounded-2xl p-3.5 mb-4 flex items-center justify-around gap-3">
+            <!-- Concentric SVG Activity Rings -->
+            <div class="relative w-28 h-28 flex items-center justify-center shrink-0">
+              <svg class="w-28 h-28" viewBox="0 0 120 120">
+                <!-- Outer Ring Track (Habits - Rose/Red) -->
+                <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(244,63,94,0.18)" stroke-width="10" />
+                <circle id="ringHabits" class="progress-ring-circle" cx="60" cy="60" r="48" fill="none" stroke="#f43f5e" stroke-width="10" stroke-linecap="round" stroke-dasharray="301.59" stroke-dashoffset="301.59" />
+                
+                <!-- Middle Ring Track (Tasks - Emerald/Green) -->
+                <circle cx="60" cy="60" r="35" fill="none" stroke="rgba(16,185,129,0.18)" stroke-width="10" />
+                <circle id="ringTasks" class="progress-ring-circle" cx="60" cy="60" r="35" fill="none" stroke="#10b981" stroke-width="10" stroke-linecap="round" stroke-dasharray="219.91" stroke-dashoffset="219.91" />
+                
+                <!-- Inner Ring Track (Weekly Consistency - Cyan/Blue) -->
+                <circle cx="60" cy="60" r="22" fill="none" stroke="rgba(56,189,248,0.18)" stroke-width="10" />
+                <circle id="ringWeekly" class="progress-ring-circle" cx="60" cy="60" r="22" fill="none" stroke="#38bdf8" stroke-width="10" stroke-linecap="round" stroke-dasharray="138.23" stroke-dashoffset="138.23" />
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span id="ringCenterPct" class="text-xs font-extrabold text-white tabular-nums">0%</span>
+              </div>
+            </div>
+
+            <!-- Ring Legend Metrics -->
+            <div class="space-y-2 text-xs flex-1">
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-1.5 text-rose-300 font-medium">
+                  <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span> Rituals
+                </span>
+                <span id="legendHabitsPct" class="font-mono font-bold text-white">0%</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-1.5 text-emerald-300 font-medium">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></span> To-Dos
+                </span>
+                <span id="legendTasksPct" class="font-mono font-bold text-white">0%</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-1.5 text-cyan-300 font-medium">
+                  <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8]"></span> Weekly Avg
+                </span>
+                <span id="legendWeeklyPct" class="font-mono font-bold text-white">0%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Mon–Sun Weekly Streak Bar Chart -->
+          <div class="bg-black/25 border border-white/10 rounded-2xl p-4">
+            <div class="flex items-center justify-between text-xs mb-3">
+              <span id="selectedDayLabel" class="font-semibold text-cyan-300">Today's Live Activity</span>
+              <span id="selectedDayValue" class="font-mono font-bold text-white">0% Completed</span>
+            </div>
+
+            <!-- 7 Day Bars -->
+            <div id="weeklyChartBars" class="grid grid-cols-7 gap-2 items-end h-36 pt-4 px-1">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3 text-[11px] text-slate-300 flex items-center justify-between">
+          <span>🔥 Flame = 80%+ daily goal hit</span>
+          <span class="text-cyan-300 font-medium">Interactive Chart</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- ==========================================
+         3. LIVE EXAM & GOAL COUNTDOWN TIMERS
+    =========================================== -->
+    <section id="section-countdown" class="reveal-card visible vision-glass rounded-[32px] p-4 sm:p-6 card-shine">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+            <i class="ph-fill ph-timer text-xl"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white tracking-tight">Live Exam & Milestone Countdowns</h2>
+            <p class="text-xs text-slate-300">Real-time second-by-second precision • Click any timer to edit or lock-in</p>
+          </div>
+        </div>
+
+        <button onclick="openCountdownModal()" class="vision-pill btn-spring px-3.5 py-1.5 rounded-full text-xs font-semibold text-indigo-200 hover:bg-indigo-500/25 flex items-center gap-1.5 border border-indigo-400/30">
+          <i class="ph-bold ph-plus"></i> Add Exam / Goal
+        </button>
+      </div>
+
+      <!-- Add / Edit Countdown Inline Drawer -->
+      <div id="countdownEditorDrawer" class="hidden mb-5 bg-black/45 border border-indigo-400/30 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <span id="countdownModalTitle" class="text-xs font-bold uppercase tracking-wider text-indigo-300">Set Exam or Milestone Target</span>
+          <button onclick="closeCountdownModal()" class="text-slate-400 hover:text-white"><i class="ph ph-x text-sm"></i></button>
+        </div>
+        <input type="hidden" id="editCountdownId" value="" />
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div>
+            <label class="block text-[11px] text-slate-300 mb-1">Exam / Goal Title</label>
+            <input id="cdTitleInput" type="text" placeholder="e.g., AWS Solutions Architect Exam" class="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-400" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-300 mb-1">Target Date & Time</label>
+            <input id="cdDateInput" type="datetime-local" class="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-400" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-300 mb-1">Category Tag</label>
+            <select id="cdCategoryInput" class="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-400">
+              <option value="🎓 Exam">🎓 Exam</option>
+              <option value="🏆 Certification">🏆 Certification</option>
+              <option value="🚀 Project Deadline">🚀 Project Deadline</option>
+              <option value="🎯 Personal Goal">🎯 Personal Goal</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-1">
+          <button onclick="closeCountdownModal()" class="px-3 py-1.5 rounded-xl bg-white/10 text-xs text-slate-300 hover:text-white">Cancel</button>
+          <button onclick="saveCountdownItem()" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white font-bold text-xs shadow-lg hover:brightness-110">
+            Lock In Target
+          </button>
+        </div>
+      </div>
+
+      <!-- Countdown Cards Grid -->
+      <div id="countdownGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Populated dynamically via JS with live ticking every second -->
+      </div>
+    </section>
+
+    <!-- ==========================================
+         4. INTERACTIVE DAILY TO-DO LIST (INLINE EDITABLE)
+    =========================================== -->
+    <section id="section-todos" class="reveal-card visible vision-glass rounded-[32px] p-4 sm:p-6 card-shine">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-2xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300">
+            <i class="ph-fill ph-list-checks text-xl"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white tracking-tight">Daily Action To-Do List</h2>
+            <p class="text-xs text-slate-300">Click checkbox to complete • <span class="text-cyan-300 font-medium">Tap any task title to edit inline anytime</span></p>
+          </div>
+        </div>
+
+        <!-- Filter Pills + Daily Reset Actions -->
+        <div class="flex flex-wrap items-center gap-1.5">
+          <div class="bg-black/30 border border-white/10 rounded-full p-1 flex items-center text-xs">
+            <button onclick="setTodoFilter('all')" id="filterBtn-all" class="px-2.5 py-1 rounded-full font-semibold bg-white/20 text-white transition-all">All</button>
+            <button onclick="setTodoFilter('active')" id="filterBtn-active" class="px-2.5 py-1 rounded-full font-medium text-slate-300 hover:text-white transition-all">Active</button>
+            <button onclick="setTodoFilter('completed')" id="filterBtn-completed" class="px-2.5 py-1 rounded-full font-medium text-slate-300 hover:text-white transition-all">Done</button>
+          </div>
+
+          <button onclick="resetTodosForNewDay()" class="vision-pill btn-spring px-3 py-1.5 rounded-full text-xs font-medium text-amber-200 hover:bg-amber-500/20 flex items-center gap-1" title="Uncheck all tasks for a fresh day">
+            <i class="ph ph-sun-horizon"></i> New Day Reset
+          </button>
+          <button onclick="clearCompletedTodos()" class="vision-pill btn-spring px-3 py-1.5 rounded-full text-xs font-medium text-rose-200 hover:bg-rose-500/20 flex items-center gap-1" title="Remove completed tasks">
+            <i class="ph ph-trash"></i> Clear Done
+          </button>
+        </div>
+      </div>
+
+      <!-- Fast Add To-Do Input Bar -->
+      <form onsubmit="handleAddTodo(event)" class="flex flex-col sm:flex-row gap-2 mb-4">
+        <div class="relative flex-1">
+          <i class="ph ph-plus-circle text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 text-base"></i>
+          <input id="newTodoInput" type="text" placeholder="Add a task for today (or tap any existing task below to rewrite it)..."
+            class="w-full bg-black/35 border border-white/15 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-colors" />
+        </div>
+        <div class="flex gap-2">
+          <select id="newTodoPriority" class="bg-slate-900/90 border border-white/15 rounded-2xl px-3.5 py-3 text-xs font-semibold text-white focus:outline-none focus:border-cyan-400">
+            <option value="high">🔥 High Priority</option>
+            <option value="medium" selected>⚡ Medium</option>
+            <option value="chill">🌿 Chill</option>
+          </select>
+          <button type="submit" class="btn-spring px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg shadow-cyan-500/20 hover:brightness-110 whitespace-nowrap">
+            Add Task
+          </button>
+        </div>
+      </form>
+
+      <!-- To-Do Items List -->
+      <div id="todoListContainer" class="space-y-2">
+        <!-- Populated dynamically via JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==========================================
+       MOBILE FLOATING APPLE GLASS DOCK
+  =========================================== -->
+  <nav class="fixed bottom-3.5 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-md md:hidden">
+    <div class="vision-glass rounded-full p-1.5 flex items-center justify-around border border-white/20 shadow-2xl">
+      <button onclick="scrollToSection('section-pet')" class="flex flex-col items-center py-1.5 px-3 rounded-full text-cyan-300 hover:bg-white/10 transition-all">
+        <i class="ph-fill ph-sparkle text-lg"></i>
+        <span class="text-[10px] font-semibold">Nova</span>
+      </button>
+      <button onclick="scrollToSection('section-habits')" class="flex flex-col items-center py-1.5 px-3 rounded-full text-slate-200 hover:bg-white/10 transition-all">
+        <i class="ph-fill ph-fire text-lg text-orange-400"></i>
+        <span class="text-[10px] font-semibold">Streaks</span>
+      </button>
+      <button onclick="scrollToSection('section-countdown')" class="flex flex-col items-center py-1.5 px-3 rounded-full text-slate-200 hover:bg-white/10 transition-all">
+        <i class="ph-fill ph-timer text-lg text-indigo-400"></i>
+        <span class="text-[10px] font-semibold">Exams</span>
+      </button>
+      <button onclick="scrollToSection('section-todos')" class="flex flex-col items-center py-1.5 px-3 rounded-full text-slate-200 hover:bg-white/10 transition-all">
+        <i class="ph-fill ph-check-square-offset text-lg text-emerald-400"></i>
+        <span class="text-[10px] font-semibold">To-Dos</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ==========================================
+       CUSTOM APPLE-STYLE RESET MODAL (NO ALERT)
+  =========================================== -->
+  <div id="resetModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/65 backdrop-blur-md p-4">
+    <div class="vision-glass rounded-3xl max-w-sm w-full p-6 text-center space-y-4 border border-white/25 animate-float-slow">
+      <div class="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-rose-300 mx-auto">
+        <i class="ph-fill ph-arrow-counter-clockwise text-2xl"></i>
+      </div>
+      <h3 class="text-lg font-bold text-white">Restore Default Demo Data?</h3>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        This will reset your habits, weekly streak chart, exam countdowns, and daily tasks back to their fresh showcase state.
+      </p>
+      <div class="flex gap-2.5 pt-2">
+        <button onclick="closeResetModal()" class="flex-1 py-2.5 rounded-xl bg-white/10 text-xs font-semibold text-slate-200 hover:bg-white/15">
+          Cancel
+        </button>
+        <button onclick="confirmResetDemoData()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 text-xs font-bold text-white shadow-lg">
+          Reset Everything
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       APPLICATION LOGIC & INTERACTIVE ENGINE
+  =========================================== -->
+  <script>
+    /**************************************************************
+     * 1. STATE & STORAGE INITIALIZATION
+     **************************************************************/
+    const STORAGE_KEY = 'novaos_productivity_state_v1';
+    let soundEnabled = true;
+    let selectedHabitIcon = '🏋️';
+    let currentTodoFilter = 'all';
+    let selectedWeekDayIndex = 6; // Index 6 = Today (live)
+
+    // Helper to create future dates relative to right now for realistic live exam countdowns
+    function getFutureISO(daysAhead, hoursAhead = 4) {
+      const d = new Date(Date.now() + (daysAhead * 86400000) + (hoursAhead * 3600000));
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function getDefaultState() {
+      return {
+        pet: {
+          level: 4,
+          xp: 65,
+          mood: 'idle'
+        },
+        wallpaperIndex: 0,
+        autoSlideshow: true,
+        habits: [
+          { id: 'h1', name: 'Strength & Gym Training', category: '⚡ Fitness', icon: '🏋️', streak: 14, completedToday: true },
+          { id: 'h2', name: 'Cloud & Linux Lab Practice', category: '💻 Tech Lab', icon: '☁️', streak: 9, completedToday: true },
+          { id: 'h3', name: '2.5L Pure Hydration', category: '💧 Wellness', icon: '💧', streak: 21, completedToday: false },
+          { id: 'h4', name: 'Deep Focus Coding Sprint', category: '📚 Deep Work', icon: '🚀', streak: 7, completedToday: false },
+          { id: 'h5', name: 'Mindful Evening Review', category: '🧘 Mindfulness', icon: '🧠', streak: 5, completedToday: false }
+        ],
+        // Mon - Sun historical completion percentages (Index 6 is dynamically synced with Today's live completion!)
+        weeklyHistory: [
+          { day: 'Mon', pct: 80, note: 'Strong start to the week! 4/5 habits crushed.' },
+          { day: 'Tue', pct: 100, note: 'Perfect 100% flow day! Every ritual completed.' },
+          { day: 'Wed', pct: 60, note: 'Solid mid-week push despite a busy schedule.' },
+          { day: 'Thu', pct: 85, note: 'High focus lab session & gym streak maintained!' },
+          { day: 'Fri', pct: 90, note: 'Awesome Friday momentum!' },
+          { day: 'Sat', pct: 75, note: 'Active recovery & weekend review completed.' },
+          { day: 'Today', pct: 40, note: 'Live tracking today — check off habits to power up!' }
+        ],
+        countdowns: [
+          {
+            id: 'cd1',
+            title: 'Cloud Architecture & Linux Certification Exam',
+            targetDate: getFutureISO(4, 6),
+            createdAt: Date.now() - (10 * 86400000),
+            category: '🎓 Exam'
+          },
+          {
+            id: 'cd2',
+            title: 'Final Capstone Project & System Demo',
+            targetDate: getFutureISO(11, 14),
+            createdAt: Date.now() - (15 * 86400000),
+            category: '🚀 Project Deadline'
+          }
+        ],
+        todos: [
+          { id: 't1', text: 'Complete 2 practice exam modules & review notes', priority: 'high', completed: true },
+          { id: 't2', text: 'Configure Docker & Linux networking lab environment', priority: 'high', completed: false },
+          { id: 't3', text: 'Hit daily protein goal & 45-min strength session', priority: 'medium', completed: false },
+          { id: 't4', text: 'Organize tomorrow’s top 3 priorities before sleep', priority: 'chill', completed: false }
+        ]
+      };
+    }
+
+    let appState = loadState();
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return getDefaultState();
+        const parsed = JSON.parse(raw);
+        return { ...getDefaultState(), ...parsed };
+      } catch (e) {
+        return getDefaultState();
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.warn('Storage save skipped:', e);
+      }
+    }
+
+    /**************************************************************
+     * 2. WEB AUDIO API TACTILE SOUND SYNTHESIZER
+     **************************************************************/
+    let audioCtx = null;
+    function playTone(type = 'pop') {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'complete') {
+          // Apple-style upward cheerful chime
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.14); // G5
+          osc.frequency.exponentialRampToValueAtTime(1046.5, now + 0.28); // C6
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        } else if (type === 'pet') {
+          // Warm purr/blush chord
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.22);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'undo') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(311.13, now + 0.18);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } else {
+          // Crisp glass tap
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(680, now);
+          gain.gain.setValueAtTime(0.06, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        }
+      } catch (e) {}
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      const icon = document.getElementById('soundIcon');
+      icon.className = soundEnabled ? 'ph-fill ph-speaker-high text-sm text-cyan-300' : 'ph ph-speaker-slash text-sm text-slate-400';
+      if (soundEnabled) playTone('pop');
+    }
+
+    /**************************************************************
+     * 3. PARTICLE ENGINE (HEARTS, STARS & CONFETTI)
+     **************************************************************/
+    const fxCanvas = document.getElementById('fxCanvas');
+    const fxCtx = fxCanvas.getContext('2d');
+    let particles = [];
+
+    function resizeFxCanvas() {
+      fxCanvas.width = window.innerWidth;
+      fxCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeFxCanvas);
+    resizeFxCanvas();
+
+    function spawnParticles(x, y, preset = 'celebrate') {
+      const count = preset === 'hearts' ? 14 : 26;
+      const colors = preset === 'hearts'
+        ? ['#fb7185', '#f43f5e', '#fda4af', '#fde047']
+        : ['#38bdf8', '#34d399', '#fde047', '#f472b6', '#a78bfa'];
+
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+        const speed = 2.5 + Math.random() * 5.5;
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 2.5,
+          size: 5 + Math.random() * 6,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: 1,
+          shape: preset === 'hearts' ? 'heart' : (Math.random() > 0.5 ? 'star' : 'circle'),
+          rotation: Math.random() * Math.PI * 2,
+          vRot: (Math.random() - 0.5) * 0.15
+        });
+      }
+    }
+
+    function updateAndDrawParticles() {
+      fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.16; // Gravity
+        p.alpha -= 0.018;
+        p.rotation += p.vRot;
+
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        fxCtx.save();
+        fxCtx.globalAlpha = Math.max(0, p.alpha);
+        fxCtx.translate(p.x, p.y);
+        fxCtx.rotate(p.rotation);
+        fxCtx.fillStyle = p.color;
+
+        if (p.shape === 'heart') {
+          const s = p.size * 0.12;
+          fxCtx.beginPath();
+          fxCtx.moveTo(0, 3 * s);
+          fxCtx.bezierCurveTo(0, 0, -5 * s, 0, -5 * s, 3 * s);
+          fxCtx.bezierCurveTo(-5 * s, 6 * s, 0, 8 * s, 0, 10 * s);
+          fxCtx.bezierCurveTo(0, 8 * s, 5 * s, 6 * s, 5 * s, 3 * s);
+          fxCtx.bezierCurveTo(5 * s, 0, 0, 0, 0, 3 * s);
+          fxCtx.fill();
+        } else {
+          fxCtx.beginPath();
+          fxCtx.arc(0, 0, p.size * 0.5, 0, Math.PI * 2);
+          fxCtx.fill();
+        }
+        fxCtx.restore();
+      }
+      requestAnimationFrame(updateAndDrawParticles);
+    }
+    updateAndDrawParticles();
+
+    /**************************************************************
+     * 4. VIRTUAL PET ("NOVA") EYE TRACKING & EMOTION ENGINE
+     **************************************************************/
+    let pointerTarget = { x: window.innerWidth / 2, y: window.innerHeight / 3 };
+    let currentLook = { x: 0, y: 0 };
+    let petExpressionTimeout = null;
+
+    function handlePointerMove(clientX, clientY, isTouch = false) {
+      pointerTarget.x = clientX;
+      pointerTarget.y = clientY;
+
+      // Visual touch follower glow
+      const touchGlow = document.getElementById('touchGlow');
+      if (touchGlow) {
+        touchGlow.style.left = `${clientX}px`;
+        touchGlow.style.top = `${clientY}px`;
+        if (isTouch) {
+          touchGlow.classList.add('active');
+          clearTimeout(touchGlow.hideTimer);
+          touchGlow.hideTimer = setTimeout(() => touchGlow.classList.remove('active'), 500);
+        }
+      }
+
+      // Subtle parallax on background slideshow
+      const normX = (clientX / window.innerWidth - 0.5) * 14;
+      const normY = (clientY / window.innerHeight - 0.5) * 14;
+      const activeSlide = document.querySelector('.bg-slide.active');
+      if (activeSlide) {
+        activeSlide.style.transform = `translate3d(${-normX}px, ${-normY}px, 0) scale(1.04)`;
+      }
+    }
+
+    window.addEventListener('mousemove', (e) => handlePointerMove(e.clientX, e.clientY, false), { passive: true });
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches[0]) handlePointerMove(e.touches[0].clientX, e.touches[0].clientY, true);
+    }, { passive: true });
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches[0]) handlePointerMove(e.touches[0].clientX, e.touches[0].clientY, true);
+    }, { passive: true });
+
+    // Smooth 60fps Gaze & Body Tracking Loop
+    function animatePetEyeTracking() {
+      const svgEl = document.getElementById('novaSvg');
+      if (svgEl) {
+        const rect = svgEl.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        const dx = pointerTarget.x - centerX;
+        const dy = pointerTarget.y - centerY;
+        const dist = Math.min(1, Math.hypot(dx, dy) / 320);
+        const angle = Math.atan2(dy, dx);
+
+        const targetX = Math.cos(angle) * dist * 9;
+        const targetY = Math.sin(angle) * dist * 8;
+
+        currentLook.x += (targetX - currentLook.x) * 0.14;
+        currentLook.y += (targetY - currentLook.y) * 0.14;
+
+        const pupilsGroup = document.getElementById('pupilsGroup');
+        const faceGroup = document.getElementById('petFaceGroup');
+        const earsGroup = document.getElementById('petEars');
+
+        if (pupilsGroup) {
+          pupilsGroup.setAttribute('transform', `translate(${currentLook.x.toFixed(2)}, ${currentLook.y.toFixed(2)})`);
+        }
+        if (faceGroup) {
+          faceGroup.setAttribute('transform', `translate(${(currentLook.x * 0.55).toFixed(2)}, ${(currentLook.y * 0.45).toFixed(2)})`);
+        }
+        if (earsGroup) {
+          earsGroup.setAttribute('transform', `translate(${(-currentLook.x * 0.35).toFixed(2)}, ${(-currentLook.y * 0.25).toFixed(2)})`);
+        }
+      }
+      requestAnimationFrame(animatePetEyeTracking);
+    }
+    animatePetEyeTracking();
+
+    // Natural Periodic Blinking
+    setInterval(() => {
+      const eyesNormal = document.getElementById('eyesNormal');
+      if (eyesNormal && !eyesNormal.classList.contains('hidden')) {
+        eyesNormal.style.transform = 'scaleY(0.08)';
+        eyesNormal.style.transformOrigin = '110px 108px';
+        eyesNormal.style.transition = 'transform 0.1s ease';
+        setTimeout(() => {
+          eyesNormal.style.transform = 'scaleY(1)';
+        }, 130);
+      }
+    }, 4200);
+
+    // Context-Aware Pet Emotional State Controller
+    function setPetReaction(state, customMessage = null, xpGain = 0) {
+      clearTimeout(petExpressionTimeout);
+
+      const eyesNormal = document.getElementById('eyesNormal');
+      const eyesHappy = document.getElementById('eyesHappy');
+      const eyesStarry = document.getElementById('eyesStarry');
+      const eyesCurious = document.getElementById('eyesCurious');
+      const focusVisor = document.getElementById('focusVisor');
+
+      const mouthSmile = document.getElementById('mouthSmile');
+      const mouthJoy = document.getElementById('mouthJoy');
+      const mouthCurious = document.getElementById('mouthCurious');
+
+      const bodyWrapper = document.getElementById('petBodyWrapper');
+      const speechText = document.getElementById('petSpeechText');
+      const speechBubble = document.getElementById('petSpeechBubble');
+      const moodBadge = document.getElementById('petMoodBadge');
+      const auraGlow = document.getElementById('petAuraGlow');
+
+      // Reset classes
+      [eyesNormal, eyesHappy, eyesStarry, eyesCurious, focusVisor, mouthSmile, mouthJoy, mouthCurious].forEach(el => el.classList.add('hidden'));
+      bodyWrapper.classList.remove('pet-squish', 'pet-jump', 'pet-tilt');
+      void bodyWrapper.offsetWidth; // Reflow for animation restart
+
+      const stageRect = document.getElementById('petStageContainer').getBoundingClientRect();
+      const burstX = stageRect.left + stageRect.width / 2;
+      const burstY = stageRect.top + stageRect.height / 2;
+
+      if (state === 'pet' || state === 'happy') {
+        eyesHappy.classList.remove('hidden');
+        mouthJoy.classList.remove('hidden');
+        bodyWrapper.classList.add('pet-squish');
+        moodBadge.textContent = 'Feeling Loved 💕';
+        auraGlow.className = 'absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full bg-gradient-to-tr from-rose-500/40 via-pink-500/30 to-amber-400/30 blur-3xl pointer-events-none transition-all duration-500';
+        spawnParticles(burstX, burstY, 'hearts');
+        playTone('pet');
+      } else if (state === 'celebrate') {
+        eyesStarry.classList.remove('hidden');
+        mouthJoy.classList.remove('hidden');
+        bodyWrapper.classList.add('pet-jump');
+        moodBadge.textContent = 'Hyped & Celebrating! 🔥';
+        auraGlow.className = 'absolute -top-16 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-gradient-to-tr from-emerald-400/45 via-cyan-400/35 to-amber-400/40 blur-3xl pointer-events-none transition-all duration-500';
+        spawnParticles(burstX, burstY, 'celebrate');
+        playTone('complete');
+      } else if (state === 'undo' || state === 'curious') {
+        eyesCurious.classList.remove('hidden');
+        mouthCurious.classList.remove('hidden');
+        bodyWrapper.classList.add('pet-tilt');
+        moodBadge.textContent = 'Curious Tilt ⊙_⊙';
+        playTone('undo');
+      } else if (state === 'focus') {
+        eyesNormal.classList.remove('hidden');
+        focusVisor.classList.remove('hidden');
+        mouthSmile.classList.remove('hidden');
+        bodyWrapper.classList.add('pet-squish');
+        moodBadge.textContent = 'Cyber Focus Visor ON 🕶️';
+        auraGlow.className = 'absolute -top-16 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-gradient-to-tr from-cyan-400/50 via-blue-500/40 to-indigo-600/40 blur-3xl pointer-events-none transition-all duration-500';
+        playTone('pop');
+      } else {
+        eyesNormal.classList.remove('hidden');
+        mouthSmile.classList.remove('hidden');
+        moodBadge.textContent = 'Tracking Touch & Gaze';
+      }
+
+      if (customMessage) {
+        speechBubble.classList.add('scale-105');
+        speechText.textContent = customMessage;
+        setTimeout(() => speechBubble.classList.remove('scale-105'), 250);
+      }
+
+      if (xpGain > 0) {
+        addPetXP(xpGain);
+      }
+
+      // Return smoothly to watchful state after 4.2 seconds (unless in Focus Mode)
+      if (state !== 'focus') {
+        petExpressionTimeout = setTimeout(() => {
+          [eyesHappy, eyesStarry, eyesCurious, mouthJoy, mouthCurious].forEach(el => el.classList.add('hidden'));
+          eyesNormal.classList.remove('hidden');
+          mouthSmile.classList.remove('hidden');
+          moodBadge.textContent = 'Tracking Touch & Gaze';
+        }, 4200);
+      }
+    }
+
+    function addPetXP(amount) {
+      appState.pet.xp += amount;
+      while (appState.pet.xp >= 100) {
+        appState.pet.xp -= 100;
+        appState.pet.level += 1;
+      }
+      saveState();
+      renderPetStats();
+    }
+
+    function renderPetStats() {
+      document.getElementById('petLevelBadge').textContent = `Lv. ${appState.pet.level} Spirit`;
+      document.getElementById('petXpText').textContent = `${appState.pet.xp} / 100 XP`;
+      document.getElementById('petXpBar').style.width = `${appState.pet.xp}%`;
+    }
+
+    function triggerPetInteraction(action) {
+      if (action === 'pet') {
+        const phrases = [
+          '"Hehe, that tickles! Your touch makes my spirit glow! 💕"',
+          '"^ ◡ ^ Best productivity partner ever! Ready for the next goal?"',
+          '"Purrrr~ Sending you 100% good focus vibes right now! ✨"'
+        ];
+        setPetReaction('pet', phrases[Math.floor(Math.random() * phrases.length)], 10);
+      } else if (action === 'feed') {
+        setPetReaction('celebrate', '"Yum! Cosmic star-berry consumed! Energy reserves at 110%! 🍓⚡"', 15);
+      } else if (action === 'focus') {
+        setPetReaction('focus', '"🕶️ Focus Visor engaged! Distractions blocked—let’s lock in on your exam & rituals."', 5);
+      } else if (action === 'vibecheck') {
+        const doneHabits = appState.habits.filter(h => h.completedToday).length;
+        const totalHabits = appState.habits.length || 1;
+        const pct = Math.round((doneHabits / totalHabits) * 100);
+        if (pct >= 80) {
+          setPetReaction('celebrate', `"Vibe Check: ELITE! 🔥 You've completed ${pct}% of today's rituals. Absolute legend!"`);
+        } else if (pct >= 40) {
+          setPetReaction('happy', `"Vibe Check: Solid momentum (${pct}% done)! Check off 1 more habit to ignite a big streak!"`);
+        } else {
+          setPetReaction('focus', `"Vibe Check: Fresh runway ahead! Tap your easiest habit or task first to build momentum! 🚀"`);
+        }
+      }
+    }
+
+    /**************************************************************
+     * 5. DYNAMIC WALLPAPER SLIDESHOW ENGINE
+     **************************************************************/
+    let slideshowTimer = null;
+
+    function setWallpaperMood(index, manual = true) {
+      appState.wallpaperIndex = index;
+      const slides = document.querySelectorAll('.bg-slide');
+      slides.forEach((s, idx) => {
+        s.classList.toggle('active', idx === index);
+      });
+
+      document.querySelectorAll('.mood-btn').forEach((btn, idx) => {
+        if (idx === index) {
+          btn.className = 'mood-btn px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 bg-white/20 text-white shadow-sm whitespace-nowrap';
+        } else {
+          btn.className = 'mood-btn px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 text-slate-300 hover:text-white whitespace-nowrap';
+        }
+      });
+
+      if (manual) {
+        const moodNames = ['Alpine Twilight 🏔️', 'Aurora Borealis 🌌', 'Golden Hour Dunes 🏜️', 'Minimalist Zen Sanctuary 🏛️', 'Cyber Neon Rain 🌧️'];
+        playTone('pop');
+        setPetReaction('happy', `"Ooh, loving the ${moodNames[index]} atmosphere! Looks super clean."`);
+      }
+      saveState();
+    }
+
+    function toggleAutoSlideshow() {
+      appState.autoSlideshow = !appState.autoSlideshow;
+      updateAutoSlideshowUI();
+      saveState();
+      playTone('pop');
+    }
+
+    function updateAutoSlideshowUI() {
+      const btn = document.getElementById('autoSlideBtn');
+      clearInterval(slideshowTimer);
+      if (appState.autoSlideshow) {
+        btn.className = 'px-2 py-1 rounded-full text-[11px] font-semibold text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 ml-0.5 flex items-center gap-1';
+        btn.innerHTML = '<i class="ph-fill ph-play-circle text-xs"></i><span class="hidden lg:inline">Auto</span>';
+        slideshowTimer = setInterval(() => {
+          const next = (appState.wallpaperIndex + 1) % 5;
+          setWallpaperMood(next, false);
+        }, 11000);
+      } else {
+        btn.className = 'px-2 py-1 rounded-full text-[11px] font-medium text-slate-400 bg-white/5 border border-white/10 ml-0.5 flex items-center gap-1';
+        btn.innerHTML = '<i class="ph ph-pause-circle text-xs"></i><span class="hidden lg:inline">Paused</span>';
+      }
+    }
+
+    /**************************************************************
+     * 6. DAILY HABITS & APPLE WEEKLY STREAK CHART
+     **************************************************************/
+    function selectHabitIcon(icon) {
+      selectedHabitIcon = icon;
+      document.querySelectorAll('.habit-icon-opt').forEach(btn => {
+        if (btn.textContent === icon) {
+          btn.className = 'habit-icon-opt w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-sm ring-2 ring-emerald-400';
+        } else {
+          btn.className = 'habit-icon-opt w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm';
+        }
+      });
+    }
+
+    function toggleHabitModal(show) {
+      const drawer = document.getElementById('addHabitDrawer');
+      drawer.classList.toggle('hidden', !show);
+      if (show) {
+        document.getElementById('newHabitName').focus();
+        setPetReaction('focus', '"Adding a new daily ritual? Consistency is how we level up! 💪"');
+      }
+    }
+
+    function addNewHabit() {
+      const input = document.getElementById('newHabitName');
+      const category = document.getElementById('newHabitCategory').value;
+      const name = input.value.trim();
+      if (!name) return;
+
+      appState.habits.unshift({
+        id: 'h_' + Date.now(),
+        name,
+        category,
+        icon: selectedHabitIcon,
+        streak: 1,
+        completedToday: false
+      });
+
+      input.value = '';
+      toggleHabitModal(false);
+      saveState();
+      renderAll();
+      setPetReaction('celebrate', `"New habit '${name}' locked in! Let's start Day 1 strong! 🔥"`, 10);
+    }
+
+    function toggleHabitCompletion(id, event) {
+      const habit = appState.habits.find(h => h.id === id);
+      if (!habit) return;
+
+      habit.completedToday = !habit.completedToday;
+      if (habit.completedToday) {
+        habit.streak += 1;
+        if (event) {
+          spawnParticles(event.clientX || window.innerWidth / 2, event.clientY || window.innerHeight / 2, 'celebrate');
+        }
+        setPetReaction('celebrate', `"Yes!! '${habit.name}' completed! 🔥 ${habit.streak}-day streak powered up!"`, 20);
+      } else {
+        habit.streak = Math.max(0, habit.streak - 1);
+        setPetReaction('undo', `"Unchecked '${habit.name}'? ⊙_⊙ No worries, tap it again whenever you finish!"`, 0);
+      }
+
+      selectedWeekDayIndex = 6; // Highlight Today on chart
+      saveState();
+      renderAll();
+    }
+
+    function deleteHabit(id, event) {
+      if (event) event.stopPropagation();
+      appState.habits = appState.habits.filter(h => h.id !== id);
+      saveState();
+      renderAll();
+      playTone('undo');
+    }
+
+    function renderHabitsAndChart() {
+      const container = document.getElementById('habitsListContainer');
+      const totalHabits = appState.habits.length;
+      const completedHabits = appState.habits.filter(h => h.completedToday).length;
+      const habitsPct = totalHabits > 0 ? Math.round((completedHabits / totalHabits) * 100) : 0;
+
+      // Sync Today's live percentage into weeklyHistory[6]
+      appState.weeklyHistory[6].pct = habitsPct;
+
+      document.getElementById('habitsProgressSubtitle').textContent =
+        `${completedHabits} of ${totalHabits} rituals completed today (${habitsPct}%)`;
+
+      const totalStreakDays = appState.habits.reduce((acc, h) => acc + h.streak, 0);
+      document.getElementById('activeStreaksTotal').textContent = `🔥 ${totalStreakDays} Combined Streak Days`;
+
+      const maxStreak = appState.habits.reduce((max, h) => Math.max(max, h.streak), 0);
+      document.getElementById('currentStreakBanner').textContent = `${maxStreak}d Peak Streak`;
+
+      if (totalHabits === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 bg-black/20 rounded-2xl border border-white/10">
+            <p class="text-xs text-slate-300">No habits yet. Tap "+ New Habit" above to start tracking!</p>
+          </div>`;
+      } else {
+        container.innerHTML = appState.habits.map(h => `
+          <div onclick="toggleHabitCompletion('${h.id}', event)"
+               class="group cursor-pointer rounded-2xl p-3 sm:p-3.5 transition-all duration-300 border flex items-center justify-between gap-3 ${
+                 h.completedToday
+                   ? 'bg-gradient-to-r from-emerald-500/20 via-teal-500/15 to-transparent border-emerald-400/35 shadow-lg shadow-emerald-950/30'
+                   : 'bg-black/30 hover:bg-white/10 border-white/10'
+               }">
+            <div class="flex items-center gap-3 min-w-0">
+              <!-- Animated Check / Icon Ring -->
+              <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-lg shrink-0 transition-transform duration-300 group-active:scale-90 ${
+                h.completedToday
+                  ? 'bg-emerald-400 text-slate-950 shadow-[0_0_16px_rgba(52,211,153,0.5)]'
+                  : 'bg-white/10 text-white border border-white/15'
+              }">
+                ${h.completedToday ? '<i class="ph-bold ph-check text-xl"></i>' : `<span>${h.icon}</span>`}
+              </div>
+              <div class="min-w-0">
+                <h3 class="text-xs sm:text-sm font-bold truncate transition-all ${
+                  h.completedToday ? 'text-emerald-200 line-through decoration-emerald-400/60' : 'text-white'
+                }">${escapeHtml(h.name)}</h3>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-slate-300">${escapeHtml(h.category)}</span>
+                  <span class="text-[11px] font-bold text-orange-300 flex items-center gap-0.5">
+                    <i class="ph-fill ph-fire text-orange-400"></i> ${h.streak}d streak
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+              <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+                h.completedToday ? 'bg-emerald-400/20 text-emerald-300' : 'bg-white/5 text-slate-400 group-hover:text-white'
+              }">
+                ${h.completedToday ? 'Done' : 'Log'}
+              </span>
+              <button onclick="deleteHabit('${h.id}', event)" class="opacity-60 hover:opacity-100 p-1.5 text-slate-400 hover:text-rose-400 rounded-lg transition-opacity" title="Delete habit">
+                <i class="ph ph-trash text-sm"></i>
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Calculate To-Do & Weekly Ring Percentages
+      const totalTodos = appState.todos.length;
+      const doneTodos = appState.todos.filter(t => t.completed).length;
+      const todosPct = totalTodos > 0 ? Math.round((doneTodos / totalTodos) * 100) : 0;
+
+      const weeklyAvgPct = Math.round(
+        appState.weeklyHistory.reduce((sum, d) => sum + d.pct, 0) / appState.weeklyHistory.length
+      );
+
+      const overallSyncPct = Math.round((habitsPct + todosPct) / 2);
+      document.getElementById('topMomentumScore').textContent = `${overallSyncPct}% Complete`;
+      document.getElementById('ringCenterPct').textContent = `${overallSyncPct}%`;
+
+      // Update Concentric SVG Rings
+      updateSvgRing('ringHabits', 301.59, habitsPct);
+      updateSvgRing('ringTasks', 219.91, todosPct);
+      updateSvgRing('ringWeekly', 138.23, weeklyAvgPct);
+
+      document.getElementById('legendHabitsPct').textContent = `${habitsPct}%`;
+      document.getElementById('legendTasksPct').textContent = `${todosPct}%`;
+      document.getElementById('legendWeeklyPct').textContent = `${weeklyAvgPct}%`;
+
+      // Render Interactive 7-Day Streak Bars
+      const chartEl = document.getElementById('weeklyChartBars');
+      const selectedDayObj = appState.weeklyHistory[selectedWeekDayIndex] || appState.weeklyHistory[6];
+      document.getElementById('selectedDayLabel').textContent =
+        selectedWeekDayIndex === 6 ? `Today's Live Activity` : `${selectedDayObj.day}'s Snapshot`;
+      document.getElementById('selectedDayValue').textContent = `${selectedDayObj.pct}% Goal Hit`;
+
+      chartEl.innerHTML = appState.weeklyHistory.map((item, idx) => {
+        const isSelected = idx === selectedWeekDayIndex;
+        const isHighStreak = item.pct >= 80;
+        const barHeight = Math.max(14, item.pct);
+        return `
+          <div onclick="selectWeekDay(${idx})" class="flex flex-col items-center justify-end h-full cursor-pointer group select-none">
+            <!-- Flame icon for 80%+ days -->
+            <div class="mb-1 text-xs transition-transform group-hover:scale-125 ${isHighStreak ? 'opacity-100' : 'opacity-20'}">
+              ${isHighStreak ? '🔥' : '•'}
+            </div>
+            <!-- Vertical Capsule Track -->
+            <div class="w-full max-w-[28px] h-24 bg-white/10 rounded-full p-0.5 flex items-end overflow-hidden border ${
+              isSelected ? 'border-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.4)]' : 'border-white/5'
+            }">
+              <div class="w-full rounded-full transition-all duration-700 ${
+                idx === 6
+                  ? 'bg-gradient-to-t from-cyan-500 via-teal-400 to-emerald-300'
+                  : isHighStreak
+                    ? 'bg-gradient-to-t from-indigo-500 via-purple-400 to-pink-400'
+                    : 'bg-white/40'
+              }" style="height: ${barHeight}%"></div>
+            </div>
+            <!-- Day Label -->
+            <span class="mt-1.5 text-[10px] font-bold ${
+              isSelected ? 'text-cyan-300' : 'text-slate-400 group-hover:text-white'
+            }">${item.day}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateSvgRing(elementId, circumference, percentage) {
+      const circle = document.getElementById(elementId);
+      if (!circle) return;
+      const clamped = Math.max(0, Math.min(100, percentage));
+      const offset = circumference - (clamped / 100) * circumference;
+      circle.style.strokeDashoffset = offset;
+    }
+
+    function selectWeekDay(idx) {
+      selectedWeekDayIndex = idx;
+      const dayObj = appState.weeklyHistory[idx];
+      playTone('pop');
+      renderHabitsAndChart();
+      setPetReaction(
+        dayObj.pct >= 80 ? 'celebrate' : 'happy',
+        `"${dayObj.day}: ${dayObj.pct}% completion! ${dayObj.note}"`
+      );
+    }
+
+    /**************************************************************
+     * 7. LIVE EXAM & GOAL COUNTDOWN TIMERS
+     **************************************************************/
+    function openCountdownModal(editId = null) {
+      const drawer = document.getElementById('countdownEditorDrawer');
+      const titleEl = document.getElementById('countdownModalTitle');
+      const idInput = document.getElementById('editCountdownId');
+      const nameInput = document.getElementById('cdTitleInput');
+      const dateInput = document.getElementById('cdDateInput');
+      const catInput = document.getElementById('cdCategoryInput');
+
+      drawer.classList.remove('hidden');
+
+      if (editId) {
+        const item = appState.countdowns.find(c => c.id === editId);
+        if (item) {
+          titleEl.textContent = 'Edit Exam / Goal Countdown';
+          idInput.value = item.id;
+          nameInput.value = item.title;
+          dateInput.value = item.targetDate;
+          catInput.value = item.category;
+        }
+      } else {
+        titleEl.textContent = 'Set New Exam or Milestone Target';
+        idInput.value = '';
+        nameInput.value = '';
+        dateInput.value = getFutureISO(7, 9);
+        catInput.value = '🎓 Exam';
+      }
+      nameInput.focus();
+      setPetReaction('focus', '"Setting a target countdown! Having a clear deadline sharpens our focus 10x! ⏱️"');
+    }
+
+    function closeCountdownModal() {
+      document.getElementById('countdownEditorDrawer').classList.add('hidden');
+    }
+
+    function saveCountdownItem() {
+      const id = document.getElementById('editCountdownId').value;
+      const title = document.getElementById('cdTitleInput').value.trim();
+      const targetDate = document.getElementById('cdDateInput').value;
+      const category = document.getElementById('cdCategoryInput').value;
+
+      if (!title || !targetDate) return;
+
+      if (id) {
+        const existing = appState.countdowns.find(c => c.id === id);
+        if (existing) {
+          existing.title = title;
+          existing.targetDate = targetDate;
+          existing.category = category;
+        }
+      } else {
+        appState.countdowns.unshift({
+          id: 'cd_' + Date.now(),
+          title,
+          targetDate,
+          createdAt: Date.now(),
+          category
+        });
+      }
+
+      closeCountdownModal();
+      saveState();
+      renderCountdowns();
+      setPetReaction('focus', `"Target locked: '${title}'! Let's make every hour count! ⚡"`, 15);
+    }
+
+    function deleteCountdown(id, event) {
+      if (event) event.stopPropagation();
+      appState.countdowns = appState.countdowns.filter(c => c.id !== id);
+      saveState();
+      renderCountdowns();
+      playTone('undo');
+    }
+
+    function focusOnExam(title, event) {
+      if (event) event.stopPropagation();
+      setPetReaction('focus', `"🕶️ EXAM LOCK-IN MODE for '${title}'! Phone on silent—let's do a deep study sprint!"`, 10);
+    }
+
+    function renderCountdowns() {
+      const grid = document.getElementById('countdownGrid');
+      if (appState.countdowns.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full text-center py-8 bg-black/25 rounded-2xl border border-white/10">
+            <p class="text-xs text-slate-300">No active countdowns. Click "+ Add Exam / Goal" to set a live timer!</p>
+          </div>`;
+        return;
+      }
+
+      const now = Date.now();
+      grid.innerHTML = appState.countdowns.map(item => {
+        const targetMs = new Date(item.targetDate).getTime();
+        const diff = targetMs - now;
+        const isPast = diff <= 0;
+
+        const days = isPast ? 0 : Math.floor(diff / 86400000);
+        const hours = isPast ? 0 : Math.floor((diff % 86400000) / 3600000);
+        const mins = isPast ? 0 : Math.floor((diff % 3600000) / 60000);
+        const secs = isPast ? 0 : Math.floor((diff % 60000) / 1000);
+
+        const pad = n => String(n).padStart(2, '0');
+        const isUrgent = !isPast && days < 5;
+
+        // Calculate preparation progress bar
+        const createdMs = item.createdAt || (targetMs - 14 * 86400000);
+        const totalWindow = Math.max(1, targetMs - createdMs);
+        const elapsedPct = Math.min(100, Math.max(8, Math.round(((now - createdMs) / totalWindow) * 100)));
+
+        const formattedDate = new Date(item.targetDate).toLocaleString([], {
+          month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        return `
+          <div onclick="openCountdownModal('${item.id}')"
+               class="cursor-pointer rounded-3xl p-4 sm:p-5 border transition-all duration-300 relative overflow-hidden group ${
+                 isUrgent
+                   ? 'bg-gradient-to-br from-indigo-950/70 via-slate-900/70 to-fuchsia-950/60 border-indigo-400/40'
+                   : 'bg-black/35 hover:bg-black/45 border-white/15'
+               }">
+            <div class="flex items-start justify-between gap-2 mb-3">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-500/25 text-indigo-200 border border-indigo-400/30">
+                    ${escapeHtml(item.category)}
+                  </span>
+                  ${isUrgent ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 animate-pulse">⚡ Final Sprint</span>' : ''}
+                </div>
+                <h3 class="text-sm sm:text-base font-extrabold text-white mt-1.5 group-hover:text-cyan-200 transition-colors">
+                  ${escapeHtml(item.title)}
+                </h3>
+                <p class="text-[11px] text-slate-300/80 flex items-center gap-1 mt-0.5">
+                  <i class="ph ph-calendar-blank"></i> Target: ${formattedDate}
+                </p>
+              </div>
+
+              <div class="flex items-center gap-1">
+                <button onclick="focusOnExam('${escapeHtml(item.title)}', event)" class="vision-pill px-2.5 py-1 rounded-xl text-[11px] font-semibold text-cyan-300 hover:bg-cyan-500/20" title="Lock-In Focus with Nova">
+                  🕶️ Focus
+                </button>
+                <button onclick="deleteCountdown('${item.id}', event)" class="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg" title="Remove countdown">
+                  <i class="ph ph-trash text-sm"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- 4-Block Live Tabular Countdown Readout -->
+            <div class="grid grid-cols-4 gap-2 my-3">
+              <div class="bg-black/45 border border-white/10 rounded-2xl py-2.5 px-2 text-center">
+                <div class="font-mono text-lg sm:text-2xl font-extrabold text-white tabular-nums">${pad(days)}</div>
+                <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Days</div>
+              </div>
+              <div class="bg-black/45 border border-white/10 rounded-2xl py-2.5 px-2 text-center">
+                <div class="font-mono text-lg sm:text-2xl font-extrabold text-white tabular-nums">${pad(hours)}</div>
+                <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Hours</div>
+              </div>
+              <div class="bg-black/45 border border-white/10 rounded-2xl py-2.5 px-2 text-center">
+                <div class="font-mono text-lg sm:text-2xl font-extrabold text-cyan-300 tabular-nums">${pad(mins)}</div>
+                <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Mins</div>
+              </div>
+              <div class="bg-black/45 border border-cyan-400/25 rounded-2xl py-2.5 px-2 text-center relative overflow-hidden">
+                <div class="font-mono text-lg sm:text-2xl font-extrabold text-amber-300 tabular-nums">${pad(secs)}</div>
+                <div class="text-[10px] uppercase tracking-wider text-amber-200/80 font-semibold">Secs</div>
+              </div>
+            </div>
+
+            <!-- Timeline Runway Progress Bar -->
+            <div class="mt-2">
+              <div class="flex justify-between text-[10px] text-slate-300 mb-1">
+                <span>Preparation Timeline</span>
+                <span class="text-indigo-300 font-semibold">Click card to edit date/time</span>
+              </div>
+              <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-indigo-400 via-cyan-400 to-emerald-400 rounded-full" style="width: ${elapsedPct}%"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Live 1-Second Interval for Countdowns & Header Clock
+    setInterval(() => {
+      renderCountdowns();
+      updateHeaderClock();
+    }, 1000);
+
+    function updateHeaderClock() {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const el = document.getElementById('headerLiveDate');
+      if (el) el.textContent = `${dateStr} • ${timeStr}`;
+    }
+
+    /**************************************************************
+     * 8. INTERACTIVE DAILY TO-DO LIST (FULL CRUD + INLINE EDITING)
+     **************************************************************/
+    function handleAddTodo(e) {
+      e.preventDefault();
+      const input = document.getElementById('newTodoInput');
+      const priority = document.getElementById('newTodoPriority').value;
+      const text = input.value.trim();
+      if (!text) return;
+
+      appState.todos.unshift({
+        id: 't_' + Date.now(),
+        text,
+        priority,
+        completed: false
+      });
+
+      input.value = '';
+      saveState();
+      renderAll();
+      setPetReaction('focus', `"Added '${text}' to today's mission list! Let's knock it out! 🎯"`, 10);
+    }
+
+    function toggleTodoItem(id, event) {
+      const todo = appState.todos.find(t => t.id === id);
+      if (!todo) return;
+
+      todo.completed = !todo.completed;
+      if (todo.completed) {
+        if (event) {
+          spawnParticles(event.clientX || window.innerWidth / 2, event.clientY || window.innerHeight / 2, 'celebrate');
+        }
+        setPetReaction('celebrate', `"Task checked off! ★‿★ '${todo.text}' is DONE! Crushing it today!"`, 15);
+      } else {
+        setPetReaction('undo', `"Moved '${todo.text}' back to active list! Ready whenever you are."`, 0);
+      }
+
+      saveState();
+      renderAll();
+    }
+
+    function saveInlineTodoEdit(id, newText) {
+      const trimmed = newText.trim();
+      const todo = appState.todos.find(t => t.id === id);
+      if (!todo) return;
+
+      if (trimmed && trimmed !== todo.text) {
+        todo.text = trimmed;
+        saveState();
+        playTone('pop');
+        setPetReaction('focus', `"Updated task to: '${trimmed}'! Adaptability is key! ✏️"`);
+      }
+      renderTodos();
+    }
+
+    function deleteTodoItem(id) {
+      appState.todos = appState.todos.filter(t => t.id !== id);
+      saveState();
+      renderAll();
+      playTone('undo');
+    }
+
+    function setTodoFilter(filter) {
+      currentTodoFilter = filter;
+      ['all', 'active', 'completed'].forEach(f => {
+        const btn = document.getElementById(`filterBtn-${f}`);
+        if (f === filter) {
+          btn.className = 'px-2.5 py-1 rounded-full font-semibold bg-white/20 text-white transition-all';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-full font-medium text-slate-300 hover:text-white transition-all';
+        }
+      });
+      renderTodos();
+    }
+
+    function resetTodosForNewDay() {
+      appState.todos.forEach(t => { t.completed = false; });
+      saveState();
+      renderAll();
+      setPetReaction('happy', '"🌅 Fresh day reset! All daily tasks are unchecked and ready for today’s run!"');
+    }
+
+    function clearCompletedTodos() {
+      const before = appState.todos.length;
+      appState.todos = appState.todos.filter(t => !t.completed);
+      if (appState.todos.length < before) {
+        saveState();
+        renderAll();
+        setPetReaction('celebrate', '"✨ Cleared completed tasks! Look how clean that workspace is!"');
+      }
+    }
+
+    function renderTodos() {
+      const container = document.getElementById('todoListContainer');
+      const filtered = appState.todos.filter(t => {
+        if (currentTodoFilter === 'active') return !t.completed;
+        if (currentTodoFilter === 'completed') return t.completed;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 bg-black/20 rounded-2xl border border-white/10">
+            <p class="text-xs text-slate-300">No tasks in this view. Add a new task above or switch filter tabs!</p>
+          </div>`;
+        return;
+      }
+
+      const priorityStyles = {
+        high: { label: '🔥 High', cls: 'bg-rose-500/20 text-rose-300 border-rose-400/30' },
+        medium: { label: '⚡ Medium', cls: 'bg-amber-500/20 text-amber-300 border-amber-400/30' },
+        chill: { label: '🌿 Chill', cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30' }
+      };
+
+      container.innerHTML = filtered.map(t => {
+        const p = priorityStyles[t.priority] || priorityStyles.medium;
+        return `
+          <div class="group rounded-2xl p-3 sm:px-4 border transition-all flex items-center justify-between gap-3 ${
+            t.completed
+              ? 'bg-emerald-950/20 border-emerald-400/25 opacity-80'
+              : 'bg-black/35 hover:bg-black/50 border-white/10'
+          }">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <!-- Checkbox Button -->
+              <button onclick="toggleTodoItem('${t.id}', event)"
+                class="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                  t.completed
+                    ? 'bg-emerald-400 text-slate-950 shadow-[0_0_12px_rgba(52,211,153,0.5)]'
+                    : 'border-2 border-white/30 hover:border-cyan-400 bg-white/5'
+                }">
+                ${t.completed ? '<i class="ph-bold ph-check text-xs"></i>' : ''}
+              </button>
+
+              <!-- Inline Editable Task Text -->
+              <input type="text"
+                value="${escapeHtml(t.text)}"
+                onblur="saveInlineTodoEdit('${t.id}', this.value)"
+                onkeydown="if(event.key==='Enter'){this.blur();}"
+                title="Click to edit task inline"
+                class="w-full bg-transparent text-xs sm:text-sm font-medium focus:outline-none focus:bg-white/10 focus:px-2.5 py-1 rounded-lg transition-all ${
+                  t.completed ? 'line-through text-slate-400' : 'text-white'
+                }" />
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${p.cls}">
+                ${p.label}
+              </span>
+              <button onclick="deleteTodoItem('${t.id}')" class="opacity-60 hover:opacity-100 p-1.5 text-slate-400 hover:text-rose-400 rounded-lg" title="Delete task">
+                <i class="ph ph-trash text-sm"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /**************************************************************
+     * 9. UTILITIES, NAVIGATION & INITIALIZATION
+     **************************************************************/
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        playTone('pop');
+      }
+    }
+
+    function openResetModal() {
+      const modal = document.getElementById('resetModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeResetModal() {
+      const modal = document.getElementById('resetModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function confirmResetDemoData() {
+      localStorage.removeItem(STORAGE_KEY);
+      appState = getDefaultState();
+      closeResetModal();
+      renderAll();
+      setWallpaperMood(0, false);
+      setPetReaction('celebrate', '"✨ Fresh slate restored! All demo habits, streaks, countdowns & tasks are ready!"');
+    }
+
+    function renderAll() {
+      renderPetStats();
+      renderHabitsAndChart();
+      renderCountdowns();
+      renderTodos();
+    }
+
+    window.onload = function () {
+      updateHeaderClock();
+      setWallpaperMood(appState.wallpaperIndex || 0, false);
+      updateAutoSlideshowUI();
+      renderAll();
+
+      // Scroll-reveal observer for Apple viewing animations
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          }
+        });
+      }, { threshold: 0.1 });
+
+      document.querySelectorAll('.reveal-card').forEach(card => observer.observe(card));
+    };
+  </script>
+</body>
+</html>
