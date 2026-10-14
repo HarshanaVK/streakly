@@ -1,7 +1,7 @@
 # ⚡ Streakly — Interactive Habit Tracking & Productivity Companion
 
 <div align="center">
-  <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80" alt="Streakly Banner" width="100%" style="border-radius: 16px; max-height: 320px; object-fit: cover;" />
+  <img src="./public/cover.png" alt="Streakly Banner" width="100%" style="border-radius: 16px; max-height: 480px; object-fit: contain; background: #ffffff;" />
 
   <br />
   <br />
