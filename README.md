@@ -6,6 +6,7 @@
   <br />
   <br />
 
+  [![Built for Couples](https://img.shields.io/badge/Designed_for-Couples_%E2%9D%A4%EF%B8%8F-FF4081?style=for-the-badge)](https://github.com/HarshanaVK/streakly)
   [![Next.js](https://img.shields.io/badge/Next.js-14.2-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
   [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
